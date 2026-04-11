@@ -97,18 +97,18 @@ void launch_apply_1q(Complex128* state, int n_qubits, int target, const Gate1Q& 
     Complex128 g10 = gate.m[1][0], g11 = gate.m[1][1];
 
     if (target < 5) {
-        int64_t grid = (n_pairs + block_size - 1) / block_size;
+        unsigned int grid = (unsigned int)((n_pairs + block_size - 1) / block_size);
         kernel_apply_1q_low<<<dim3(grid), dim3(block_size), 0, stream>>>(
             state, n_qubits, target, g00, g01, g10, g11);
     } else if (target < 11) {
         int64_t tile_size = 1LL << (target + 1);
-        int64_t n_tiles = 1LL << (n_qubits - target - 1);
-        int lds_bytes = tile_size * sizeof(Complex128);
-        int threads = std::min((int64_t)block_size, tile_size / 2);
+        unsigned int n_tiles = (unsigned int)(1LL << (n_qubits - target - 1));
+        size_t lds_bytes = tile_size * sizeof(Complex128);
+        int threads = (int)std::min((int64_t)block_size, tile_size / 2);
         kernel_apply_1q_mid<<<dim3(n_tiles), dim3(threads), lds_bytes, stream>>>(
             state, n_qubits, target, g00, g01, g10, g11);
     } else {
-        int64_t grid = (n_pairs + block_size - 1) / block_size;
+        unsigned int grid = (unsigned int)((n_pairs + block_size - 1) / block_size);
         kernel_apply_1q_high<<<dim3(grid), dim3(block_size), 0, stream>>>(
             state, n_qubits, target, g00, g01, g10, g11);
     }

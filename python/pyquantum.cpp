@@ -70,10 +70,10 @@ PYBIND11_MODULE(pyquantum, m) {
             sv.apply_gate_1q(quantum::gates::T(), t);
         }, py::arg("target"))
         .def("cx", [](quantum::StateVector& sv, int c, int t) {
-            sv.apply_gate_2q(quantum::gates::CNOT(), c, t);
+            sv.apply_gate_2q(quantum::gates::CNOT(), t, c);
         }, py::arg("control"), py::arg("target"))
         .def("cz", [](quantum::StateVector& sv, int c, int t) {
-            sv.apply_gate_2q(quantum::gates::CZ(), c, t);
+            sv.apply_gate_2q(quantum::gates::CZ(), t, c);
         }, py::arg("control"), py::arg("target"))
         .def("swap", [](quantum::StateVector& sv, int a, int b) {
             sv.apply_gate_2q(quantum::gates::SWAP(), a, b);

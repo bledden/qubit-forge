@@ -1,5 +1,6 @@
 #include "quantum/types.h"
 #include <hip/hip_runtime.h>
+#include <cmath>
 
 namespace quantum {
 
@@ -40,7 +41,7 @@ void launch_apply_diagonal(Complex128* state, int n_qubits, int target, const Ga
                            hipStream_t stream) {
     int64_t n = 1LL << n_qubits;
     int block_size = 256;
-    int64_t grid = (n + block_size - 1) / block_size;
+    unsigned int grid = (unsigned int)((n + block_size - 1) / block_size);
 
     bool phase0_is_identity = (std::abs(gate.m[0][0].x - 1.0) < 1e-15 &&
                                 std::abs(gate.m[0][0].y) < 1e-15);

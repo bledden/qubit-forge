@@ -47,7 +47,7 @@ void launch_apply_2q(Complex128* state, int n_qubits, int qubit_a, int qubit_b,
                      const Gate2Q& gate, hipStream_t stream) {
     int64_t n_groups = 1LL << (n_qubits - 2);
     int block_size = 256;
-    int64_t grid_size = (n_groups + block_size - 1) / block_size;
+    unsigned int grid_size = (unsigned int)((n_groups + block_size - 1) / block_size);
 
     kernel_apply_2q<<<dim3(grid_size), dim3(block_size), 0, stream>>>(
         state, n_qubits, qubit_a, qubit_b,

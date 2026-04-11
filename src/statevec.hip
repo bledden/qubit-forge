@@ -78,7 +78,7 @@ void StateVector::apply_circuit(const Circuit& circuit) {
         if (op.is_single_qubit()) {
             apply_gate_1q(op.to_gate1q(), op.target);
         } else {
-            apply_gate_2q(op.to_gate2q(), op.control, op.target);
+            apply_gate_2q(op.to_gate2q(), op.target, op.control);
         }
     }
 }
@@ -95,7 +95,7 @@ void StateVector::apply_circuit_fused(const Circuit& circuit) {
                     launch_apply_1q(d_state_, n_qubits_, op.target, g);
                 }
             } else {
-                launch_apply_2q(d_state_, n_qubits_, op.control, op.target, op.to_gate2q());
+                launch_apply_2q(d_state_, n_qubits_, op.target, op.control, op.to_gate2q());
             }
         }
         HIP_CHECK(hipDeviceSynchronize());

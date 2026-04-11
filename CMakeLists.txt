@@ -1,4 +1,19 @@
 cmake_minimum_required(VERSION 3.21)
+
+# Ensure ROCm cmake modules are discoverable
+if(NOT DEFINED ENV{ROCM_PATH})
+    set(ROCM_PATH "/opt/rocm" CACHE PATH "ROCm installation path")
+else()
+    set(ROCM_PATH $ENV{ROCM_PATH} CACHE PATH "ROCm installation path")
+endif()
+list(APPEND CMAKE_PREFIX_PATH "${ROCM_PATH}")
+
+# Default to MI300X (gfx942); override with -DCMAKE_HIP_ARCHITECTURES=...
+# Must be set BEFORE project() so CMake uses it during HIP language init.
+if(NOT DEFINED CMAKE_HIP_ARCHITECTURES)
+    set(CMAKE_HIP_ARCHITECTURES "gfx942" CACHE STRING "GPU architectures")
+endif()
+
 project(quantum LANGUAGES CXX HIP)
 
 set(CMAKE_CXX_STANDARD 17)
