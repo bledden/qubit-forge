@@ -1,6 +1,7 @@
 #pragma once
 
 #include "quantum/types.h"
+#include "quantum/circuit.h"
 #include <cstdint>
 #include <vector>
 
@@ -22,6 +23,8 @@ public:
 
     void apply_gate_1q(const Gate1Q& gate, int target);
     void apply_gate_2q(const Gate2Q& gate, int qubit_a, int qubit_b);
+
+    void apply_circuit(const Circuit& circuit);
 
     Complex128* data() { return d_state_; }
     const Complex128* data() const { return d_state_; }

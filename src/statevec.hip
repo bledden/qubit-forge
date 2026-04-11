@@ -71,4 +71,14 @@ void StateVector::apply_gate_2q(const Gate2Q& gate, int qubit_a, int qubit_b) {
     HIP_CHECK(hipDeviceSynchronize());
 }
 
+void StateVector::apply_circuit(const Circuit& circuit) {
+    for (const auto& op : circuit.ops()) {
+        if (op.is_single_qubit()) {
+            apply_gate_1q(op.to_gate1q(), op.target);
+        } else {
+            apply_gate_2q(op.to_gate2q(), op.control, op.target);
+        }
+    }
+}
+
 } // namespace quantum
