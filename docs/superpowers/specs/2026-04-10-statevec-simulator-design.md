@@ -189,9 +189,10 @@ Compare against published cuQuantum numbers on A100-80GB and H100-80GB.
 
 ### 7.3 MI300X Headline
 
-- **33-qubit QFT** on a single GPU — no NVIDIA single-GPU can do this (max 30 qubits at complex128 on H100-80GB)
-- **34-qubit** at complex64 if accuracy is acceptable
+- **33-qubit QFT** on a single GPU — requires 128GB HBM, which rules out A100-80GB and H100-80GB (the GPUs with the most published cuQuantum benchmarks). H200 (141GB) and B200 (192GB) can also fit 33 qubits but have less published simulation data.
+- **34-qubit** at complex64 if accuracy is acceptable (128GB, fits on MI300X/H200/B200)
 - Report total time, per-gate breakdown, and bandwidth utilization
+- **Bandwidth comparison**: MI300X (5.3 TB/s) vs H200 (4.8 TB/s) vs H100 (3.35 TB/s) vs A100 (2.0 TB/s) — this workload is purely memory-bandwidth bound, so these ratios predict relative performance directly
 
 ### 7.4 Profiling
 
