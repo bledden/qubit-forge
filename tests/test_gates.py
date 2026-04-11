@@ -241,5 +241,78 @@ class TestMeasurement:
         assert all(s == 1 for s in samples)
 
 
+class TestQuantumAlgorithms:
+    def test_qft_vs_numpy_fft(self):
+        """Compare our QFT against numpy's FFT for correctness."""
+        n = 4
+        sv = pq.StateVector(n)
+        sv.x(0)
+        sv.x(1)
+
+        for target in range(n):
+            sv.h(target)
+            for control in range(target + 1, n):
+                angle = np.pi / (2 ** (control - target))
+                sv.rz(angle, target)
+
+        gpu_amps = sv.amplitudes()
+
+        input_state = np.zeros(2**n, dtype=complex)
+        input_state[3] = 1.0
+        np_fft = np.fft.ifft(input_state) * np.sqrt(2**n)
+
+        gpu_probs = np.abs(gpu_amps) ** 2
+        np_probs = np.abs(np_fft) ** 2
+        np.testing.assert_allclose(sorted(gpu_probs), sorted(np_probs), atol=1e-8)
+
+    def test_grover_2qubit(self):
+        """Grover's search on 2 qubits, mark |11⟩."""
+        sv = pq.StateVector(2)
+        sv.h(0)
+        sv.h(1)
+        sv.cz(0, 1)
+        sv.h(0)
+        sv.h(1)
+        sv.x(0)
+        sv.x(1)
+        sv.cz(0, 1)
+        sv.x(0)
+        sv.x(1)
+        sv.h(0)
+        sv.h(1)
+
+        probs = sv.probabilities()
+        np.testing.assert_allclose(probs[3], 1.0, atol=1e-10)
+
+    def test_grover_3qubit(self):
+        """Grover's on 3 qubits, mark |101⟩. One iteration."""
+        n = 3
+        marked = 5
+
+        sv = pq.StateVector(n)
+        for q in range(n):
+            sv.h(q)
+
+        sv.x(1)
+        sv.h(2)
+        sv.cx(0, 2)
+        sv.h(2)
+        sv.x(1)
+
+        for q in range(n):
+            sv.h(q)
+            sv.x(q)
+        sv.h(n - 1)
+        sv.cx(0, n - 1)
+        sv.h(n - 1)
+        for q in range(n):
+            sv.x(q)
+            sv.h(q)
+
+        probs = sv.probabilities()
+        assert probs[marked] > 1.0 / (2**n), \
+            f"Marked state probability {probs[marked]} should exceed uniform {1.0/(2**n)}"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
