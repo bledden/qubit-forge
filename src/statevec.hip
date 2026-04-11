@@ -1,7 +1,9 @@
 #include "quantum/statevec.h"
+#include "quantum/kernels.h"
 #include <hip/hip_runtime.h>
 #include <stdexcept>
 #include <cstring>
+#include <cmath>
 
 #define HIP_CHECK(call) do { \
     hipError_t err = (call); \
@@ -41,15 +43,20 @@ std::vector<Complex128> StateVector::download() const {
     return host;
 }
 
-// Forward declarations for kernel launchers
-void launch_apply_1q(Complex128* state, int n_qubits, int target, const Gate1Q& gate, hipStream_t stream = 0);
-void launch_apply_2q(Complex128* state, int n_qubits, int qubit_a, int qubit_b, const Gate2Q& gate, hipStream_t stream = 0);
+bool gate_is_diagonal(const Gate1Q& gate) {
+    return (std::abs(gate.m[0][1].x) < 1e-15 && std::abs(gate.m[0][1].y) < 1e-15 &&
+            std::abs(gate.m[1][0].x) < 1e-15 && std::abs(gate.m[1][0].y) < 1e-15);
+}
 
 void StateVector::apply_gate_1q(const Gate1Q& gate, int target) {
     if (target < 0 || target >= n_qubits_) {
         throw std::invalid_argument("target qubit out of range");
     }
-    launch_apply_1q(d_state_, n_qubits_, target, gate);
+    if (gate_is_diagonal(gate)) {
+        launch_apply_diagonal(d_state_, n_qubits_, target, gate);
+    } else {
+        launch_apply_1q(d_state_, n_qubits_, target, gate);
+    }
     HIP_CHECK(hipDeviceSynchronize());
 }
 
