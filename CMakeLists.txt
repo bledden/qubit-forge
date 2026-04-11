@@ -13,6 +13,7 @@ add_library(quantum SHARED
     src/kernels/two_qubit.hip
     src/kernels/diagonal.hip
     src/circuit.cpp
+    src/fusion.cpp
 )
 target_include_directories(quantum PUBLIC include)
 target_link_libraries(quantum hip::device)

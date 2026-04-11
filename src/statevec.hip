@@ -81,4 +81,23 @@ void StateVector::apply_circuit(const Circuit& circuit) {
     }
 }
 
+void StateVector::apply_circuit_fused(const Circuit& circuit) {
+    auto layers = fuse_circuit(circuit);
+    for (const auto& layer : layers) {
+        for (const auto& op : layer.ops) {
+            if (op.is_single_qubit()) {
+                Gate1Q g = op.to_gate1q();
+                if (gate_is_diagonal(g)) {
+                    launch_apply_diagonal(d_state_, n_qubits_, op.target, g);
+                } else {
+                    launch_apply_1q(d_state_, n_qubits_, op.target, g);
+                }
+            } else {
+                launch_apply_2q(d_state_, n_qubits_, op.control, op.target, op.to_gate2q());
+            }
+        }
+        HIP_CHECK(hipDeviceSynchronize());
+    }
+}
+
 } // namespace quantum
