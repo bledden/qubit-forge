@@ -15,6 +15,10 @@ add_library(quantum SHARED
 target_include_directories(quantum PUBLIC include)
 target_link_libraries(quantum hip::device)
 
+find_package(pybind11 REQUIRED)
+pybind11_add_module(pyquantum python/pyquantum.cpp)
+target_link_libraries(pyquantum PRIVATE quantum)
+
 # Tests
 add_executable(test_statevec tests/test_statevec.cpp)
 target_link_libraries(test_statevec quantum)
