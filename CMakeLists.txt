@@ -13,3 +13,7 @@ add_library(quantum SHARED
 )
 target_include_directories(quantum PUBLIC include)
 target_link_libraries(quantum hip::device)
+
+# Tests
+add_executable(test_statevec tests/test_statevec.cpp)
+target_link_libraries(test_statevec quantum)
