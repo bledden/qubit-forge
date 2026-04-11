@@ -164,5 +164,82 @@ class TestAgainstNumpy:
         assert_amplitudes(sv, np_state)
 
 
+class TestCircuit:
+    def test_circuit_bell_state(self):
+        circ = pq.Circuit(2)
+        circ.h(0)
+        circ.cx(0, 1)
+        sv = pq.StateVector(2)
+        sv.apply_circuit(circ)
+        s = 1 / np.sqrt(2)
+        expected = np.array([s, 0, 0, s], dtype=complex)
+        assert_amplitudes(sv, expected)
+
+    def test_circuit_qft_2qubit(self):
+        circ = pq.Circuit(2)
+        circ.h(0)
+        circ.rz(np.pi / 2, 0)
+        circ.h(1)
+        sv = pq.StateVector(2)
+        sv.apply_circuit(circ)
+        probs = sv.probabilities()
+        np.testing.assert_allclose(np.sum(probs), 1.0, atol=1e-10)
+
+
+class TestFusion:
+    def test_fused_same_qubit(self):
+        circ = pq.Circuit(2)
+        circ.h(0)
+        circ.h(0)
+        circ.h(0)
+        sv = pq.StateVector(2)
+        sv.apply_circuit_fused(circ)
+        sv_ref = pq.StateVector(2)
+        sv_ref.h(0)
+        np.testing.assert_allclose(sv.amplitudes(), sv_ref.amplitudes(), atol=1e-10)
+
+    def test_fused_matches_unfused(self):
+        circ = pq.Circuit(4)
+        circ.h(0)
+        circ.h(1)
+        circ.cx(0, 1)
+        circ.rz(0.5, 0)
+        circ.rx(0.3, 0)
+        circ.h(2)
+        circ.cx(2, 3)
+        sv_fused = pq.StateVector(4)
+        sv_fused.apply_circuit_fused(circ)
+        sv_plain = pq.StateVector(4)
+        sv_plain.apply_circuit(circ)
+        np.testing.assert_allclose(sv_fused.amplitudes(), sv_plain.amplitudes(), atol=1e-10)
+
+
+class TestMeasurement:
+    def test_probabilities_sum_to_one(self):
+        sv = pq.StateVector(3)
+        sv.h(0)
+        sv.h(1)
+        probs = sv.probabilities()
+        np.testing.assert_allclose(np.sum(probs), 1.0, atol=1e-10)
+
+    def test_bell_state_measurement(self):
+        sv = pq.StateVector(2)
+        sv.h(0)
+        sv.cx(0, 1)
+        samples = sv.measure(10000)
+        counts = {}
+        for s in samples:
+            counts[int(s)] = counts.get(int(s), 0) + 1
+        assert set(counts.keys()).issubset({0, 3})
+        assert abs(counts.get(0, 0) / 10000 - 0.5) < 0.05
+        assert abs(counts.get(3, 0) / 10000 - 0.5) < 0.05
+
+    def test_deterministic_state(self):
+        sv = pq.StateVector(2)
+        sv.x(0)
+        samples = sv.measure(100)
+        assert all(s == 1 for s in samples)
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

@@ -12,6 +12,7 @@ add_library(quantum SHARED
     src/kernels/single_qubit.hip
     src/kernels/two_qubit.hip
     src/kernels/diagonal.hip
+    src/kernels/measure.hip
     src/circuit.cpp
     src/fusion.cpp
 )

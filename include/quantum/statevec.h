@@ -27,6 +27,8 @@ public:
 
     void apply_circuit(const Circuit& circuit);
     void apply_circuit_fused(const Circuit& circuit);
+    std::vector<double> probabilities_vec() const;
+    std::vector<int64_t> measure(int shots) const;
 
     Complex128* data() { return d_state_; }
     const Complex128* data() const { return d_state_; }

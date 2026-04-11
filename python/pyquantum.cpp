@@ -5,6 +5,7 @@
 
 #include "quantum/statevec.h"
 #include "quantum/gates.h"
+#include "quantum/circuit.h"
 
 namespace py = pybind11;
 
@@ -33,11 +34,11 @@ PYBIND11_MODULE(pyquantum, m) {
             return amps[index].norm2();
         })
         .def("probabilities", [](const quantum::StateVector& sv) {
-            auto amps = sv.download();
-            auto result = py::array_t<double>(amps.size());
+            auto probs = sv.probabilities_vec();
+            auto result = py::array_t<double>(probs.size());
             auto buf = result.mutable_unchecked<1>();
-            for (size_t i = 0; i < amps.size(); i++) {
-                buf(i) = amps[i].norm2();
+            for (size_t i = 0; i < probs.size(); i++) {
+                buf(i) = probs[i];
             }
             return result;
         })
@@ -77,5 +78,34 @@ PYBIND11_MODULE(pyquantum, m) {
         .def("swap", [](quantum::StateVector& sv, int a, int b) {
             sv.apply_gate_2q(quantum::gates::SWAP(), a, b);
         }, py::arg("qubit_a"), py::arg("qubit_b"))
+        .def("apply_circuit", &quantum::StateVector::apply_circuit)
+        .def("apply_circuit_fused", &quantum::StateVector::apply_circuit_fused)
+        .def("measure", [](const quantum::StateVector& sv, int shots) {
+            auto results = sv.measure(shots);
+            auto arr = py::array_t<int64_t>(results.size());
+            auto buf = arr.mutable_unchecked<1>();
+            for (size_t i = 0; i < results.size(); i++) {
+                buf(i) = results[i];
+            }
+            return arr;
+        }, py::arg("shots") = 1024)
+    ;
+
+    py::class_<quantum::Circuit>(m, "Circuit")
+        .def(py::init<int>(), py::arg("n_qubits"))
+        .def_property_readonly("n_qubits", &quantum::Circuit::n_qubits)
+        .def_property_readonly("size", &quantum::Circuit::size)
+        .def("h", &quantum::Circuit::h, py::arg("target"))
+        .def("x", &quantum::Circuit::x, py::arg("target"))
+        .def("y", &quantum::Circuit::y, py::arg("target"))
+        .def("z", &quantum::Circuit::z, py::arg("target"))
+        .def("rx", &quantum::Circuit::rx, py::arg("theta"), py::arg("target"))
+        .def("ry", &quantum::Circuit::ry, py::arg("theta"), py::arg("target"))
+        .def("rz", &quantum::Circuit::rz, py::arg("theta"), py::arg("target"))
+        .def("s", &quantum::Circuit::s, py::arg("target"))
+        .def("t", &quantum::Circuit::t, py::arg("target"))
+        .def("cx", &quantum::Circuit::cx, py::arg("control"), py::arg("target"))
+        .def("cz", &quantum::Circuit::cz, py::arg("control"), py::arg("target"))
+        .def("swap", &quantum::Circuit::swap, py::arg("qubit_a"), py::arg("qubit_b"))
     ;
 }

@@ -4,6 +4,8 @@
 #include <stdexcept>
 #include <cstring>
 #include <cmath>
+#include <random>
+#include <algorithm>
 
 #define HIP_CHECK(call) do { \
     hipError_t err = (call); \
@@ -98,6 +100,41 @@ void StateVector::apply_circuit_fused(const Circuit& circuit) {
         }
         HIP_CHECK(hipDeviceSynchronize());
     }
+}
+
+std::vector<double> StateVector::probabilities_vec() const {
+    int64_t n = size();
+    double* d_probs;
+    HIP_CHECK(hipMalloc(&d_probs, n * sizeof(double)));
+    launch_probabilities(d_state_, d_probs, n);
+    HIP_CHECK(hipDeviceSynchronize());
+
+    std::vector<double> result(n);
+    HIP_CHECK(hipMemcpy(result.data(), d_probs, n * sizeof(double), hipMemcpyDeviceToHost));
+    hipFree(d_probs);
+    return result;
+}
+
+std::vector<int64_t> StateVector::measure(int shots) const {
+    auto probs = probabilities_vec();
+    int64_t n = size();
+
+    std::vector<double> cdf(n);
+    cdf[0] = probs[0];
+    for (int64_t i = 1; i < n; i++) {
+        cdf[i] = cdf[i - 1] + probs[i];
+    }
+
+    std::vector<int64_t> results(shots);
+    std::mt19937_64 rng(std::random_device{}());
+    std::uniform_real_distribution<double> dist(0.0, 1.0);
+
+    for (int s = 0; s < shots; s++) {
+        double r = dist(rng);
+        auto it = std::lower_bound(cdf.begin(), cdf.end(), r);
+        results[s] = std::distance(cdf.begin(), it);
+    }
+    return results;
 }
 
 } // namespace quantum
