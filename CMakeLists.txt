@@ -10,6 +10,7 @@ find_package(hip REQUIRED)
 add_library(quantum SHARED
     src/statevec.hip
     src/kernels/single_qubit.hip
+    src/kernels/two_qubit.hip
 )
 target_include_directories(quantum PUBLIC include)
 target_link_libraries(quantum hip::device)
