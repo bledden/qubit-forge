@@ -33,8 +33,7 @@ __global__ void kernel_apply_1q_low(
     }
 }
 
-// --- Mid qubit kernel (5 <= k < 11): LDS tiling ---
-// One block per tile — no grid-stride needed (tile count fits in grid dim).
+// --- Mid qubit kernel (5 <= k < 11): LDS tiling, grid-stride over tiles ---
 __global__ void kernel_apply_1q_mid(
     Complex128* __restrict__ state,
     int64_t n_tiles,
@@ -45,28 +44,28 @@ __global__ void kernel_apply_1q_mid(
     int64_t stride = 1LL << target;
     int64_t tile_size = stride << 1;
 
-    int64_t tile_idx = blockIdx.x;
-    if (tile_idx >= n_tiles) return;
-
-    int64_t tile_start = tile_idx * tile_size;
-
     extern __shared__ Complex128 lds[];
 
-    for (int64_t i = threadIdx.x; i < tile_size; i += blockDim.x) {
-        lds[i] = state[tile_start + i];
-    }
-    __syncthreads();
+    for (int64_t tile_idx = blockIdx.x; tile_idx < n_tiles; tile_idx += gridDim.x) {
+        int64_t tile_start = tile_idx * tile_size;
 
-    for (int64_t i = threadIdx.x; i < stride; i += blockDim.x) {
-        Complex128 a = lds[i];
-        Complex128 b = lds[i + stride];
-        lds[i]          = g00 * a + g01 * b;
-        lds[i + stride] = g10 * a + g11 * b;
-    }
-    __syncthreads();
+        for (int64_t i = threadIdx.x; i < tile_size; i += blockDim.x) {
+            lds[i] = state[tile_start + i];
+        }
+        __syncthreads();
 
-    for (int64_t i = threadIdx.x; i < tile_size; i += blockDim.x) {
-        state[tile_start + i] = lds[i];
+        for (int64_t i = threadIdx.x; i < stride; i += blockDim.x) {
+            Complex128 a = lds[i];
+            Complex128 b = lds[i + stride];
+            lds[i]          = g00 * a + g01 * b;
+            lds[i + stride] = g10 * a + g11 * b;
+        }
+        __syncthreads();
+
+        for (int64_t i = threadIdx.x; i < tile_size; i += blockDim.x) {
+            state[tile_start + i] = lds[i];
+        }
+        __syncthreads();  // Ensure tile write completes before loading next tile
     }
 }
 
