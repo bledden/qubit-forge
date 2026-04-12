@@ -1,0 +1,35 @@
+
+=== 10 qubits ===
+                 QFT n=10  gates=   60  plain      0.68 ms
+         QFT (fused) n=10  gates=   60  fused      0.07 ms
+                 GHZ n=10  gates=   10  plain      0.12 ms
+         Random d=20 n=10  gates=  300  plain      3.45 ms
+ Random d=20 (fused) n=10  gates=  300  fused      1.23 ms
+
+=== 20 qubits ===
+                 QFT n=20  gates=  220  plain      5.53 ms
+         QFT (fused) n=20  gates=  220  fused      0.54 ms
+                 GHZ n=20  gates=   20  plain      0.53 ms
+         Random d=20 n=20  gates=  600  plain     15.63 ms
+ Random d=20 (fused) n=20  gates=  600  fused     10.65 ms
+
+=== 25 qubits ===
+                 QFT n=25  gates=  337  plain     99.15 ms
+         QFT (fused) n=25  gates=  337  fused     11.13 ms
+                 GHZ n=25  gates=   25  plain      7.59 ms
+         Random d=20 n=25  gates=  740  plain    245.99 ms
+ Random d=20 (fused) n=25  gates=  740  fused    242.77 ms
+
+=== 28 qubits ===
+                 QFT n=28  gates=  420  plain    919.43 ms
+         QFT (fused) n=28  gates=  420  fused    100.46 ms
+                 GHZ n=28  gates=   28  plain     66.28 ms
+         Random d=20 n=28  gates=  840  plain   2166.82 ms
+ Random d=20 (fused) n=28  gates=  840  fused   2166.32 ms
+
+=== 30 qubits ===
+                 QFT n=30  gates=  480  plain   4393.94 ms
+         QFT (fused) n=30  gates=  480  fused    436.77 ms
+                 GHZ n=30  gates=   30  plain    292.15 ms
+         Random d=20 n=30  gates=  900  plain   9559.91 ms
+ Random d=20 (fused) n=30  gates=  900  fused   9536.42 ms
