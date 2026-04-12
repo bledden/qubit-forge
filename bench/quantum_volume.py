@@ -25,6 +25,8 @@ import os
 import time
 import math
 
+sys.path.insert(0, os.path.dirname(__file__))
+import mi300x_env  # Set HIP env vars before importing pyquantum
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'build'))
 import pyquantum as pq
 import numpy as np

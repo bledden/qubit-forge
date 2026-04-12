@@ -314,5 +314,79 @@ class TestQuantumAlgorithms:
             f"Marked state probability {probs[marked]} should exceed uniform {1.0/(2**n)}"
 
 
+class TestNoise:
+    def test_no_noise_unchanged(self):
+        """Zero noise should produce identical results."""
+        noise = pq.NoiseModel(seed=42)
+        noise.set_single_qubit_noise(pq.NoiseType.Depolarizing, 0.0)
+
+        circ = pq.Circuit(3)
+        circ.h(0)
+        circ.cx(0, 1)
+        circ.cx(1, 2)
+
+        sv_clean = pq.StateVector(3)
+        sv_clean.apply_circuit(circ)
+
+        sv_noisy = pq.StateVector(3)
+        sv_noisy.apply_circuit_noisy(circ, noise)
+
+        np.testing.assert_allclose(sv_clean.amplitudes(), sv_noisy.amplitudes(), atol=1e-10)
+
+    def test_high_noise_destroys_state(self):
+        """100% depolarizing noise should produce a maximally mixed state."""
+        noise = pq.NoiseModel(seed=42)
+        noise.set_single_qubit_noise(pq.NoiseType.Depolarizing, 1.0)
+        noise.set_two_qubit_noise(pq.NoiseType.Depolarizing, 1.0)
+
+        circ = pq.Circuit(3)
+        circ.h(0)
+        circ.cx(0, 1)
+        circ.cx(1, 2)
+
+        # Run many noisy instances and average probabilities
+        avg_probs = np.zeros(8)
+        n_trials = 100
+        for _ in range(n_trials):
+            sv = pq.StateVector(3)
+            sv.apply_circuit_noisy(circ, noise)
+            avg_probs += sv.probabilities()
+        avg_probs /= n_trials
+
+        # With 100% noise, probabilities should be roughly uniform
+        # (not exactly, because noise is after each gate, not a perfect depolarizing channel)
+        assert np.std(avg_probs) < 0.15, f"Probabilities should be roughly uniform: {avg_probs}"
+
+    def test_measurement_error(self):
+        """Measurement errors should flip bits."""
+        noise = pq.NoiseModel(seed=42)
+        noise.set_measurement_error(1.0)  # 100% measurement error
+
+        sv = pq.StateVector(2)
+        # State is |00⟩, so clean measurement always gives 0
+        # With 100% measurement error, every bit flips → always gives 3 (|11⟩)
+        samples = sv.measure_noisy(100, noise)
+        assert all(s == 3 for s in samples), "100% measurement error on |00⟩ should give |11⟩"
+
+    def test_bit_flip_noise(self):
+        """Bit flip noise should only produce X errors."""
+        noise = pq.NoiseModel(seed=42)
+        noise.set_single_qubit_noise(pq.NoiseType.BitFlip, 0.5)
+
+        circ = pq.Circuit(1)
+        circ.h(0)
+
+        # Run many trials — bit flip on H|0⟩ gives either H|0⟩ or XH|0⟩
+        results = set()
+        for _ in range(50):
+            sv = pq.StateVector(1)
+            sv.apply_circuit_noisy(circ, noise)
+            probs = sv.probabilities()
+            results.add(round(probs[0], 2))
+
+        # Should see roughly 0.5 (no error) and either 0.0 or 1.0 (X applied)
+        assert len(results) >= 2, "Should see different outcomes from bit flip noise"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

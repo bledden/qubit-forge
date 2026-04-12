@@ -50,6 +50,10 @@ bool gate_is_diagonal(const Gate1Q& gate) {
             std::abs(gate.m[1][0].x) < 1e-15 && std::abs(gate.m[1][0].y) < 1e-15);
 }
 
+void StateVector::sync() {
+    HIP_CHECK(hipDeviceSynchronize());
+}
+
 void StateVector::apply_gate_1q(const Gate1Q& gate, int target) {
     if (target < 0 || target >= n_qubits_) {
         throw std::invalid_argument("target qubit out of range");
@@ -59,7 +63,8 @@ void StateVector::apply_gate_1q(const Gate1Q& gate, int target) {
     } else {
         launch_apply_1q(d_state_, n_qubits_, target, gate);
     }
-    HIP_CHECK(hipDeviceSynchronize());
+    // Gates on the same stream execute in order — no sync needed between gates.
+    // Sync only when reading results (download, probabilities, measure).
 }
 
 void StateVector::apply_gate_2q(const Gate2Q& gate, int qubit_a, int qubit_b) {
@@ -70,7 +75,6 @@ void StateVector::apply_gate_2q(const Gate2Q& gate, int qubit_a, int qubit_b) {
         throw std::invalid_argument("two-qubit gate requires distinct qubits");
     }
     launch_apply_2q(d_state_, n_qubits_, qubit_a, qubit_b, gate);
-    HIP_CHECK(hipDeviceSynchronize());
 }
 
 void StateVector::apply_circuit(const Circuit& circuit) {
@@ -133,6 +137,33 @@ std::vector<int64_t> StateVector::measure(int shots) const {
         double r = dist(rng);
         auto it = std::lower_bound(cdf.begin(), cdf.end(), r);
         results[s] = std::distance(cdf.begin(), it);
+    }
+    return results;
+}
+
+void StateVector::apply_circuit_noisy(const Circuit& circuit, NoiseModel& noise) {
+    for (const auto& op : circuit.ops()) {
+        // Apply the gate
+        if (op.is_single_qubit()) {
+            apply_gate_1q(op.to_gate1q(), op.target);
+        } else {
+            apply_gate_2q(op.to_gate2q(), op.target, op.control);
+        }
+
+        // Sample and apply noise errors
+        auto errors = noise.sample_errors(op);
+        for (const auto& err : errors) {
+            apply_gate_1q(err.to_gate1q(), err.target);
+        }
+    }
+}
+
+std::vector<int64_t> StateVector::measure_noisy(int shots, NoiseModel& noise) const {
+    auto results = measure(shots);
+    if (noise.measurement_error_prob() > 0.0) {
+        for (auto& r : results) {
+            r = noise.apply_measurement_error(r, n_qubits_);
+        }
     }
     return results;
 }

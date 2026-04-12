@@ -7,7 +7,8 @@ namespace quantum {
 
 static constexpr unsigned int MAX_GRID = 1u << 20;
 
-__global__ void kernel_apply_diagonal(
+__global__ __launch_bounds__(256, 4)
+void kernel_apply_diagonal(
     Complex128* __restrict__ state,
     int64_t n_elements,
     int target,
@@ -23,7 +24,8 @@ __global__ void kernel_apply_diagonal(
     }
 }
 
-__global__ void kernel_apply_diagonal_full(
+__global__ __launch_bounds__(256, 4)
+void kernel_apply_diagonal_full(
     Complex128* __restrict__ state,
     int64_t n_elements,
     int target,

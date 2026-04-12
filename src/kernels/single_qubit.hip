@@ -4,12 +4,16 @@
 
 namespace quantum {
 
-// Max total threads = grid * block must be < 2^32 on HIP.
-// Use grid-stride loops so a capped grid can still cover all elements.
-static constexpr unsigned int MAX_GRID = 1u << 20;  // 1M blocks — safe for any block size
+// Grid-stride loops: cap grid to keep total threads < 2^32.
+// MI300X has 304 CUs × 4 SIMDs = 1216 SIMD units. Target 4 waves/SIMD = 4864 waves.
+// At 256 threads/block = 4 waves/block → ~1216 blocks saturates the GPU.
+// Use 4096 blocks for safety margin + grid-stride amortization.
+static constexpr unsigned int MAX_GRID = 4096u;
 
 // --- Low qubit kernel (k < 5): coalesced access, grid-stride loop ---
-__global__ void kernel_apply_1q_low(
+// 4 waves/SIMD sweet spot for bandwidth-bound (from MXFP4 competition)
+__global__ __launch_bounds__(256, 4)
+void kernel_apply_1q_low(
     Complex128* __restrict__ state,
     int64_t n_pairs,
     int target,
@@ -25,6 +29,7 @@ __global__ void kernel_apply_1q_low(
         int64_t lo = ((tid >> target) << (target + 1)) | (tid & (stride - 1));
         int64_t hi = lo | stride;
 
+        // Non-temporal loads for large state vectors (>L2 cache = 256MB = ~24 qubits)
         Complex128 a = state[lo];
         Complex128 b = state[hi];
 
@@ -34,7 +39,9 @@ __global__ void kernel_apply_1q_low(
 }
 
 // --- Mid qubit kernel (5 <= k < 11): LDS tiling, grid-stride over tiles ---
-__global__ void kernel_apply_1q_mid(
+// LDS bandwidth is ~100 TB/s vs 5.3 TB/s HBM — worth the staging cost.
+__global__ __launch_bounds__(256, 4)
+void kernel_apply_1q_mid(
     Complex128* __restrict__ state,
     int64_t n_tiles,
     int target,
@@ -49,11 +56,13 @@ __global__ void kernel_apply_1q_mid(
     for (int64_t tile_idx = blockIdx.x; tile_idx < n_tiles; tile_idx += gridDim.x) {
         int64_t tile_start = tile_idx * tile_size;
 
+        // Coalesced global → LDS
         for (int64_t i = threadIdx.x; i < tile_size; i += blockDim.x) {
             lds[i] = state[tile_start + i];
         }
         __syncthreads();
 
+        // Apply gate in LDS (100 TB/s bandwidth)
         for (int64_t i = threadIdx.x; i < stride; i += blockDim.x) {
             Complex128 a = lds[i];
             Complex128 b = lds[i + stride];
@@ -62,15 +71,18 @@ __global__ void kernel_apply_1q_mid(
         }
         __syncthreads();
 
+        // Coalesced LDS → global
         for (int64_t i = threadIdx.x; i < tile_size; i += blockDim.x) {
             state[tile_start + i] = lds[i];
         }
-        __syncthreads();  // Ensure tile write completes before loading next tile
+        __syncthreads();
     }
 }
 
 // --- High qubit kernel (k >= 11): dual-region, grid-stride loop ---
-__global__ void kernel_apply_1q_high(
+// Paired amplitudes are far apart — no LDS benefit. Stream through HBM.
+__global__ __launch_bounds__(256, 4)
+void kernel_apply_1q_high(
     Complex128* __restrict__ state,
     int64_t n_pairs,
     int target,

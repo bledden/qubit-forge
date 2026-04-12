@@ -6,6 +6,7 @@
 #include "quantum/statevec.h"
 #include "quantum/gates.h"
 #include "quantum/circuit.h"
+#include "quantum/noise.h"
 
 namespace py = pybind11;
 
@@ -26,6 +27,7 @@ PYBIND11_MODULE(pyquantum, m) {
         .def_property_readonly("n_qubits", &quantum::StateVector::n_qubits)
         .def_property_readonly("size", &quantum::StateVector::size)
         .def("init_zero", &quantum::StateVector::init_zero)
+        .def("sync", &quantum::StateVector::sync)
         .def("amplitudes", [](const quantum::StateVector& sv) {
             return amplitudes_to_numpy(sv.download());
         })
@@ -80,6 +82,16 @@ PYBIND11_MODULE(pyquantum, m) {
         }, py::arg("qubit_a"), py::arg("qubit_b"))
         .def("apply_circuit", &quantum::StateVector::apply_circuit)
         .def("apply_circuit_fused", &quantum::StateVector::apply_circuit_fused)
+        .def("apply_circuit_noisy", &quantum::StateVector::apply_circuit_noisy)
+        .def("measure_noisy", [](const quantum::StateVector& sv, int shots, quantum::NoiseModel& noise) {
+            auto results = sv.measure_noisy(shots, noise);
+            auto arr = py::array_t<int64_t>(results.size());
+            auto buf = arr.mutable_unchecked<1>();
+            for (size_t i = 0; i < results.size(); i++) {
+                buf(i) = results[i];
+            }
+            return arr;
+        }, py::arg("shots"), py::arg("noise"))
         .def("measure", [](const quantum::StateVector& sv, int shots) {
             auto results = sv.measure(shots);
             auto arr = py::array_t<int64_t>(results.size());
@@ -89,6 +101,20 @@ PYBIND11_MODULE(pyquantum, m) {
             }
             return arr;
         }, py::arg("shots") = 1024)
+    ;
+
+    py::enum_<quantum::NoiseType>(m, "NoiseType")
+        .value("Depolarizing", quantum::NoiseType::Depolarizing)
+        .value("BitFlip", quantum::NoiseType::BitFlip)
+        .value("PhaseFlip", quantum::NoiseType::PhaseFlip)
+        .value("AmplitudeDamping", quantum::NoiseType::AmplitudeDamping)
+    ;
+
+    py::class_<quantum::NoiseModel>(m, "NoiseModel")
+        .def(py::init<uint64_t>(), py::arg("seed") = 0)
+        .def("set_single_qubit_noise", &quantum::NoiseModel::set_single_qubit_noise)
+        .def("set_two_qubit_noise", &quantum::NoiseModel::set_two_qubit_noise)
+        .def("set_measurement_error", &quantum::NoiseModel::set_measurement_error)
     ;
 
     py::class_<quantum::Circuit>(m, "Circuit")

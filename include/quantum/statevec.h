@@ -3,6 +3,7 @@
 #include "quantum/types.h"
 #include "quantum/circuit.h"
 #include "quantum/fusion.h"
+#include "quantum/noise.h"
 #include <cstdint>
 #include <vector>
 
@@ -20,6 +21,7 @@ public:
     int64_t size() const { return 1LL << n_qubits_; }
 
     void init_zero();
+    void sync();  // Explicit GPU synchronization — call before reading results
     std::vector<Complex128> download() const;
 
     void apply_gate_1q(const Gate1Q& gate, int target);
@@ -29,6 +31,10 @@ public:
     void apply_circuit_fused(const Circuit& circuit);
     std::vector<double> probabilities_vec() const;
     std::vector<int64_t> measure(int shots) const;
+
+    // Noisy execution
+    void apply_circuit_noisy(const Circuit& circuit, NoiseModel& noise);
+    std::vector<int64_t> measure_noisy(int shots, NoiseModel& noise) const;
 
     Complex128* data() { return d_state_; }
     const Complex128* data() const { return d_state_; }

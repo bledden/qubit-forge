@@ -34,6 +34,7 @@ add_library(quantum SHARED
     src/kernels/measure.hip
     src/circuit.hip
     src/fusion.hip
+    src/noise.hip
 )
 target_include_directories(quantum PUBLIC include)
 target_link_libraries(quantum hip::device)
