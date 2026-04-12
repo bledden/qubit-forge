@@ -8,73 +8,73 @@ namespace gates {
 
 inline Gate1Q H() {
     double s = 1.0 / std::sqrt(2.0);
-    return {{{
-        {Complex128(s, 0), Complex128(s, 0)},
-        {Complex128(s, 0), Complex128(-s, 0)}
-    }}};
+    Gate1Q g;
+    g.m[0][0] = Complex128(s, 0);  g.m[0][1] = Complex128(s, 0);
+    g.m[1][0] = Complex128(s, 0);  g.m[1][1] = Complex128(-s, 0);
+    return g;
 }
 
 inline Gate1Q X() {
-    return {{{
-        {Complex128(0), Complex128(1)},
-        {Complex128(1), Complex128(0)}
-    }}};
+    Gate1Q g;
+    g.m[0][0] = Complex128(0);  g.m[0][1] = Complex128(1);
+    g.m[1][0] = Complex128(1);  g.m[1][1] = Complex128(0);
+    return g;
 }
 
 inline Gate1Q Y() {
-    return {{{
-        {Complex128(0), Complex128(0, -1)},
-        {Complex128(0, 1), Complex128(0)}
-    }}};
+    Gate1Q g;
+    g.m[0][0] = Complex128(0);     g.m[0][1] = Complex128(0, -1);
+    g.m[1][0] = Complex128(0, 1);  g.m[1][1] = Complex128(0);
+    return g;
 }
 
 inline Gate1Q Z() {
-    return {{{
-        {Complex128(1), Complex128(0)},
-        {Complex128(0), Complex128(-1)}
-    }}};
+    Gate1Q g;
+    g.m[0][0] = Complex128(1);  g.m[0][1] = Complex128(0);
+    g.m[1][0] = Complex128(0);  g.m[1][1] = Complex128(-1);
+    return g;
 }
 
 inline Gate1Q Rx(double theta) {
     double c = std::cos(theta / 2.0);
     double s = std::sin(theta / 2.0);
-    return {{{
-        {Complex128(c, 0), Complex128(0, -s)},
-        {Complex128(0, -s), Complex128(c, 0)}
-    }}};
+    Gate1Q g;
+    g.m[0][0] = Complex128(c, 0);   g.m[0][1] = Complex128(0, -s);
+    g.m[1][0] = Complex128(0, -s);  g.m[1][1] = Complex128(c, 0);
+    return g;
 }
 
 inline Gate1Q Ry(double theta) {
     double c = std::cos(theta / 2.0);
     double s = std::sin(theta / 2.0);
-    return {{{
-        {Complex128(c, 0), Complex128(-s, 0)},
-        {Complex128(s, 0), Complex128(c, 0)}
-    }}};
+    Gate1Q g;
+    g.m[0][0] = Complex128(c, 0);   g.m[0][1] = Complex128(-s, 0);
+    g.m[1][0] = Complex128(s, 0);   g.m[1][1] = Complex128(c, 0);
+    return g;
 }
 
 inline Gate1Q Rz(double theta) {
     double c = std::cos(theta / 2.0);
     double s = std::sin(theta / 2.0);
-    return {{{
-        {Complex128(c, -s), Complex128(0)},
-        {Complex128(0), Complex128(c, s)}
-    }}};
+    Gate1Q g;
+    g.m[0][0] = Complex128(c, -s);  g.m[0][1] = Complex128(0);
+    g.m[1][0] = Complex128(0);      g.m[1][1] = Complex128(c, s);
+    return g;
 }
 
 inline Gate1Q S() {
-    return {{{
-        {Complex128(1), Complex128(0)},
-        {Complex128(0), Complex128(0, 1)}
-    }}};
+    Gate1Q g;
+    g.m[0][0] = Complex128(1);     g.m[0][1] = Complex128(0);
+    g.m[1][0] = Complex128(0);     g.m[1][1] = Complex128(0, 1);
+    return g;
 }
 
 inline Gate1Q T() {
     double s = 1.0 / std::sqrt(2.0);
-    return {{{
-        {Complex128(1), Complex128(0)},
-        {Complex128(0), Complex128(s, s)}
-    }}};
+    Gate1Q g;
+    g.m[0][0] = Complex128(1);     g.m[0][1] = Complex128(0);
+    g.m[1][0] = Complex128(0);     g.m[1][1] = Complex128(s, s);
+    return g;
 }
 
 inline Gate2Q CNOT() {

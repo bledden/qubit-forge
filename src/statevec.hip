@@ -27,7 +27,7 @@ StateVector::StateVector(int n_qubits) : n_qubits_(n_qubits), d_state_(nullptr) 
 
 StateVector::~StateVector() {
     if (d_state_) {
-        hipFree(d_state_);
+        (void)hipFree(d_state_);
     }
 }
 
@@ -111,7 +111,7 @@ std::vector<double> StateVector::probabilities_vec() const {
 
     std::vector<double> result(n);
     HIP_CHECK(hipMemcpy(result.data(), d_probs, n * sizeof(double), hipMemcpyDeviceToHost));
-    hipFree(d_probs);
+    (void)hipFree(d_probs);
     return result;
 }
 

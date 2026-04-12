@@ -28,16 +28,19 @@ add_library(quantum SHARED
     src/kernels/two_qubit.hip
     src/kernels/diagonal.hip
     src/kernels/measure.hip
-    src/circuit.cpp
-    src/fusion.cpp
+    src/circuit.hip
+    src/fusion.hip
 )
 target_include_directories(quantum PUBLIC include)
 target_link_libraries(quantum hip::device)
 
 find_package(pybind11 REQUIRED)
+# Compile as HIP so hipcc handles these (avoids g++ getting --offload-arch)
+set_source_files_properties(python/pyquantum.cpp PROPERTIES LANGUAGE HIP)
 pybind11_add_module(pyquantum python/pyquantum.cpp)
 target_link_libraries(pyquantum PRIVATE quantum)
 
 # Tests
+set_source_files_properties(tests/test_statevec.cpp PROPERTIES LANGUAGE HIP)
 add_executable(test_statevec tests/test_statevec.cpp)
 target_link_libraries(test_statevec quantum)
