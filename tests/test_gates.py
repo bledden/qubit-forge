@@ -369,23 +369,25 @@ class TestNoise:
         assert all(s == 3 for s in samples), "100% measurement error on |00⟩ should give |11⟩"
 
     def test_bit_flip_noise(self):
-        """Bit flip noise should only produce X errors."""
+        """Bit flip noise should flip |0⟩ to |1⟩ stochastically."""
         noise = pq.NoiseModel(seed=42)
         noise.set_single_qubit_noise(pq.NoiseType.BitFlip, 0.5)
 
+        # Use Ry(pi/6) — asymmetric state where X visibly changes probabilities
+        # Ry(pi/6)|0⟩ has P(0) ≈ 0.933, P(1) ≈ 0.067
+        # X Ry(pi/6)|0⟩ has P(0) ≈ 0.067, P(1) ≈ 0.933
         circ = pq.Circuit(1)
-        circ.h(0)
+        circ.ry(np.pi / 6, 0)
 
-        # Run many trials — bit flip on H|0⟩ gives either H|0⟩ or XH|0⟩
         results = set()
         for _ in range(50):
             sv = pq.StateVector(1)
             sv.apply_circuit_noisy(circ, noise)
             probs = sv.probabilities()
-            results.add(round(probs[0], 2))
+            results.add(round(probs[0], 1))
 
-        # Should see roughly 0.5 (no error) and either 0.0 or 1.0 (X applied)
-        assert len(results) >= 2, "Should see different outcomes from bit flip noise"
+        # Should see ~0.9 (no error) and ~0.1 (X applied)
+        assert len(results) >= 2, f"Should see different outcomes from bit flip noise, got {results}"
 
 
 if __name__ == "__main__":
