@@ -1,0 +1,33 @@
+=== FINAL BENCHMARK — NT Optimized Kernels ===
+MI300X VF, ROCm 7.2, gfx942
+
+--- 28 qubits (4.3 GB) ---
+  H( 0) [low]:      2.7 ms  3.234 TB/s  (61.0%)
+  H( 5) [mid]:      2.4 ms  3.550 TB/s  (67.0%)
+  H(10) [mid]:      2.2 ms  3.878 TB/s  (73.2%)
+  H(15) [high]:      2.2 ms  3.980 TB/s  (75.1%)
+  H(27) [high]:      2.3 ms  3.755 TB/s  (70.8%)
+
+--- 30 qubits (17.2 GB) ---
+  H( 0) [low]:     10.9 ms  3.162 TB/s  (59.7%)
+  H( 5) [mid]:     10.0 ms  3.440 TB/s  (64.9%)
+  H(10) [mid]:      8.9 ms  3.862 TB/s  (72.9%)
+  H(15) [high]:      8.6 ms  3.990 TB/s  (75.3%)
+  H(29) [high]:      8.8 ms  3.913 TB/s  (73.8%)
+
+--- 32 qubits (68.7 GB) ---
+  H( 0) [low]:     42.9 ms  3.206 TB/s  (60.5%)
+  H( 5) [mid]:     40.8 ms  3.365 TB/s  (63.5%)
+  H(10) [mid]:     35.6 ms  3.859 TB/s  (72.8%)
+  H(15) [high]:     34.6 ms  3.972 TB/s  (74.9%)
+  H(31) [high]:     34.6 ms  3.969 TB/s  (74.9%)
+
+--- 33 qubits (128 GB) ---
+  H( 0) [low]:     82.2 ms  3.343 TB/s  (63.1%)
+  H( 5) [mid]:     81.9 ms  3.358 TB/s  (63.4%)
+  H(10) [mid]:     71.3 ms  3.854 TB/s  (72.7%)
+  H(15) [high]:     66.7 ms  4.122 TB/s  (77.8%)
+  H(20) [high]:     66.9 ms  4.111 TB/s  (77.6%)
+  H(25) [high]:     69.2 ms  3.974 TB/s  (75.0%)
+  H(30) [high]:     66.6 ms  4.130 TB/s  (77.9%)
+  H(32) [high]:     68.0 ms  4.045 TB/s  (76.3%)
