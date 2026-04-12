@@ -4,14 +4,23 @@
 
 namespace quantum {
 
-// Grid-stride loops: cap grid to keep total threads < 2^32.
-// MI300X has 304 CUs × 4 SIMDs = 1216 SIMD units. Target 4 waves/SIMD = 4864 waves.
-// At 256 threads/block = 4 waves/block → ~1216 blocks saturates the GPU.
-// Use 4096 blocks for safety margin + grid-stride amortization.
 static constexpr unsigned int MAX_GRID = 4096u;
 
-// --- Low qubit kernel (k < 5): coalesced access, grid-stride loop ---
-// 4 waves/SIMD sweet spot for bandwidth-bound (from MXFP4 competition)
+// Non-temporal load/store helpers for Complex128
+// HIP's __builtin_nontemporal_load only works on fundamental types,
+// so we load/store the two doubles individually.
+__device__ __forceinline__ Complex128 nt_load(const Complex128* ptr) {
+    const double* p = reinterpret_cast<const double*>(ptr);
+    return {__builtin_nontemporal_load(p), __builtin_nontemporal_load(p + 1)};
+}
+
+__device__ __forceinline__ void nt_store(Complex128* ptr, Complex128 val) {
+    double* p = reinterpret_cast<double*>(ptr);
+    __builtin_nontemporal_store(val.x, p);
+    __builtin_nontemporal_store(val.y, p + 1);
+}
+
+// --- Low qubit kernel (k < 5): coalesced access, NT loads/stores ---
 __global__ __launch_bounds__(256, 4)
 void kernel_apply_1q_low(
     Complex128* __restrict__ state,
@@ -29,17 +38,16 @@ void kernel_apply_1q_low(
         int64_t lo = ((tid >> target) << (target + 1)) | (tid & (stride - 1));
         int64_t hi = lo | stride;
 
-        // Non-temporal loads for large state vectors (>L2 cache = 256MB = ~24 qubits)
-        Complex128 a = state[lo];
-        Complex128 b = state[hi];
+        Complex128 a = nt_load(&state[lo]);
+        Complex128 b = nt_load(&state[hi]);
 
-        state[lo] = g00 * a + g01 * b;
-        state[hi] = g10 * a + g11 * b;
+        nt_store(&state[lo], g00 * a + g01 * b);
+        nt_store(&state[hi], g10 * a + g11 * b);
     }
 }
 
 // --- Mid qubit kernel (5 <= k < 11): LDS tiling, grid-stride over tiles ---
-// LDS bandwidth is ~100 TB/s vs 5.3 TB/s HBM — worth the staging cost.
+// Global loads/stores use NT hints; LDS access is naturally fast.
 __global__ __launch_bounds__(256, 4)
 void kernel_apply_1q_mid(
     Complex128* __restrict__ state,
@@ -56,13 +64,13 @@ void kernel_apply_1q_mid(
     for (int64_t tile_idx = blockIdx.x; tile_idx < n_tiles; tile_idx += gridDim.x) {
         int64_t tile_start = tile_idx * tile_size;
 
-        // Coalesced global → LDS
+        // NT load: global → LDS
         for (int64_t i = threadIdx.x; i < tile_size; i += blockDim.x) {
-            lds[i] = state[tile_start + i];
+            lds[i] = nt_load(&state[tile_start + i]);
         }
         __syncthreads();
 
-        // Apply gate in LDS (100 TB/s bandwidth)
+        // Gate in LDS
         for (int64_t i = threadIdx.x; i < stride; i += blockDim.x) {
             Complex128 a = lds[i];
             Complex128 b = lds[i + stride];
@@ -71,16 +79,15 @@ void kernel_apply_1q_mid(
         }
         __syncthreads();
 
-        // Coalesced LDS → global
+        // NT store: LDS → global
         for (int64_t i = threadIdx.x; i < tile_size; i += blockDim.x) {
-            state[tile_start + i] = lds[i];
+            nt_store(&state[tile_start + i], lds[i]);
         }
         __syncthreads();
     }
 }
 
-// --- High qubit kernel (k >= 11): dual-region, grid-stride loop ---
-// Paired amplitudes are far apart — no LDS benefit. Stream through HBM.
+// --- High qubit kernel (k >= 11): dual-region, NT loads/stores ---
 __global__ __launch_bounds__(256, 4)
 void kernel_apply_1q_high(
     Complex128* __restrict__ state,
@@ -98,11 +105,11 @@ void kernel_apply_1q_high(
         int64_t lo = ((tid >> target) << (target + 1)) | (tid & (stride - 1));
         int64_t hi = lo | stride;
 
-        Complex128 a = state[lo];
-        Complex128 b = state[hi];
+        Complex128 a = nt_load(&state[lo]);
+        Complex128 b = nt_load(&state[hi]);
 
-        state[lo] = g00 * a + g01 * b;
-        state[hi] = g10 * a + g11 * b;
+        nt_store(&state[lo], g00 * a + g01 * b);
+        nt_store(&state[hi], g10 * a + g11 * b);
     }
 }
 
