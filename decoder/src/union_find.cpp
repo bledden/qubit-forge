@@ -7,12 +7,9 @@
 namespace decoder {
 
 UnionFindDecoder::UnionFindDecoder(const SyndromeGraph& graph)
-    : graph_(graph), boundary_node_(graph.n_detectors)
+    : graph_(graph), boundary_node_(graph.n_detectors), steering_count_(0)
 {
     // Pre-compute integer weights from error probabilities.
-    // Weight = max(1, ceil(-log(p))) — high-probability errors get low weight
-    // (fuse quickly), low-probability errors get high weight (fuse slowly).
-    // This is the key to accuracy: clusters connect through likely error paths first.
     edge_weights_.resize(graph_.edges.size());
     for (size_t i = 0; i < graph_.edges.size(); i++) {
         double p = graph_.edges[i].error_prob;
@@ -22,6 +19,7 @@ UnionFindDecoder::UnionFindDecoder(const SyndromeGraph& graph)
             edge_weights_[i] = 1;
         }
     }
+    baseline_weights_ = edge_weights_;  // Save baseline for reset
     graph_.build_adjacency();
 }
 
@@ -220,6 +218,57 @@ DecoderResult UnionFindDecoder::decode(const std::vector<bool>& detection_events
     result.confidence = 1.0;
     result.converged = true;
     return result;
+}
+
+void UnionFindDecoder::update_weights(const std::vector<bool>& detection_events,
+                                       double learning_rate) {
+    // Initialize detection rate tracking on first call
+    if (detection_rates_.empty()) {
+        detection_rates_.resize(graph_.n_detectors, 0.0);
+    }
+    steering_count_++;
+
+    // Exponential moving average of per-detector firing rates
+    for (int i = 0; i < graph_.n_detectors && i < (int)detection_events.size(); i++) {
+        double observed = detection_events[i] ? 1.0 : 0.0;
+        detection_rates_[i] =
+            (1.0 - learning_rate) * detection_rates_[i] +
+            learning_rate * observed;
+    }
+
+    // Reweight edges every 100 syndromes (amortize overhead)
+    if (steering_count_ % 100 == 0) {
+        for (size_t e = 0; e < graph_.edges.size(); e++) {
+            const auto& edge = graph_.edges[e];
+
+            // Average detection rate of this edge's endpoints
+            double det_rate = 0.0;
+            int n_det = 0;
+            if (edge.source >= 0 && edge.source < (int)detection_rates_.size()) {
+                det_rate += detection_rates_[edge.source];
+                n_det++;
+            }
+            if (edge.target >= 0 && edge.target < (int)detection_rates_.size()) {
+                det_rate += detection_rates_[edge.target];
+                n_det++;
+            }
+            if (n_det > 0) det_rate /= n_det;
+
+            // Higher detection rate → lower weight → fuse faster
+            // Blend: 80% baseline + 20% observed
+            double observed_weight = (det_rate > 1e-6) ?
+                std::max(1.0, -std::log(std::min(det_rate, 0.5))) :
+                (double)baseline_weights_[e];
+            edge_weights_[e] = std::max(1, (int)std::round(
+                0.8 * baseline_weights_[e] + 0.2 * observed_weight));
+        }
+    }
+}
+
+void UnionFindDecoder::reset_weights() {
+    edge_weights_ = baseline_weights_;
+    detection_rates_.clear();
+    steering_count_ = 0;
 }
 
 } // namespace decoder

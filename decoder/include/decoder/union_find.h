@@ -10,9 +10,21 @@ public:
     UnionFindDecoder(const SyndromeGraph& graph);
     DecoderResult decode(const std::vector<bool>& detection_events);
 
+    // Decoder steering (Sivak et al. arXiv:2511.08493):
+    // Dynamically reweight edges based on observed detection patterns.
+    // Call after each decode() to adapt to non-stationary noise.
+    void update_weights(const std::vector<bool>& detection_events,
+                        double learning_rate = 0.01);
+    void reset_weights();
+
 private:
     SyndromeGraph graph_;
-    std::vector<int> edge_weights_;  // Pre-computed integer weights from error_prob
+    std::vector<int> edge_weights_;       // Current integer weights (may be steered)
+    std::vector<int> baseline_weights_;   // Original DEM-derived weights
+
+    // Steering state
+    std::vector<double> detection_rates_; // Per-detector exponential moving average
+    int steering_count_;
 
     // Union-Find forest (re-initialized per decode call)
     struct UFNode {

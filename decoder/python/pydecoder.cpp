@@ -80,5 +80,8 @@ PYBIND11_MODULE(pydecoder, m) {
             }
             return predictions;
         })
+        .def("update_weights", &decoder::UnionFindDecoder::update_weights,
+             py::arg("detection_events"), py::arg("learning_rate") = 0.01)
+        .def("reset_weights", &decoder::UnionFindDecoder::reset_weights)
     ;
 }
