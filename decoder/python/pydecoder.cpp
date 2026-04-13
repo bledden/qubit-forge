@@ -23,8 +23,24 @@ PYBIND11_MODULE(pydecoder, m) {
         .def(py::init<>())
         .def_readwrite("n_detectors", &decoder::SyndromeGraph::n_detectors)
         .def_readwrite("n_observables", &decoder::SyndromeGraph::n_observables)
-        .def_readwrite("edges", &decoder::SyndromeGraph::edges)
+        // Use def_property for edges to avoid the copy-on-read trap
+        .def_property("edges",
+            [](const decoder::SyndromeGraph& sg) { return sg.edges; },
+            [](decoder::SyndromeGraph& sg, const std::vector<decoder::GraphEdge>& edges) {
+                sg.edges = edges;
+            })
         .def("build_adjacency", &decoder::SyndromeGraph::build_adjacency)
+        .def("add_edge", [](decoder::SyndromeGraph& sg, int src, int tgt,
+                           double error_prob, std::vector<int> obs_mask) {
+            decoder::GraphEdge e;
+            e.source = src;
+            e.target = tgt;
+            e.error_prob = error_prob;
+            e.weight = 0.0;
+            e.observable_mask = std::move(obs_mask);
+            sg.edges.push_back(e);
+        }, py::arg("source"), py::arg("target"), py::arg("error_prob"),
+           py::arg("observable_mask") = std::vector<int>{})
     ;
 
     py::class_<decoder::DecoderResult>(m, "DecoderResult")
@@ -42,7 +58,6 @@ PYBIND11_MODULE(pydecoder, m) {
             int n_shots = buf.shape(0);
             int n_det = buf.shape(1);
 
-            // Get n_observables from first decode
             std::vector<bool> first_det(n_det);
             for (int d = 0; d < n_det; d++) first_det[d] = buf(0, d);
             auto first_result = dec.decode(first_det);
@@ -51,12 +66,10 @@ PYBIND11_MODULE(pydecoder, m) {
             auto predictions = py::array_t<bool>({n_shots, n_obs});
             auto pred_buf = predictions.mutable_unchecked<2>();
 
-            // Write first result
             for (int o = 0; o < n_obs; o++) {
                 pred_buf(0, o) = first_result.observable_prediction[o];
             }
 
-            // Decode remaining
             for (int s = 1; s < n_shots; s++) {
                 std::vector<bool> det(n_det);
                 for (int d = 0; d < n_det; d++) det[d] = buf(s, d);

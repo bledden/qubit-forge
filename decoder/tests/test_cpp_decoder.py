@@ -18,13 +18,7 @@ def graph_to_cpp(decoder_graph):
     sg.n_observables = decoder_graph.n_observables
 
     for src, tgt, prob, obs_mask in decoder_graph.edges:
-        edge = pydecoder.GraphEdge()
-        edge.source = src
-        edge.target = tgt
-        edge.error_prob = prob
-        edge.weight = 0.0
-        edge.observable_mask = obs_mask
-        sg.edges.append(edge)
+        sg.add_edge(src, tgt, prob, obs_mask)
 
     sg.build_adjacency()
     return sg
