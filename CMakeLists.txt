@@ -48,6 +48,7 @@ target_link_libraries(pyquantum PRIVATE quantum)
 # ===== Decoder =====
 add_library(decoder SHARED
     decoder/src/types.cpp
+    decoder/src/union_find.cpp
 )
 target_include_directories(decoder PUBLIC decoder/include)
 
