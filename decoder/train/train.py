@@ -23,8 +23,8 @@ from data import SyndromeDataset, DataConfig, CurriculumScheduler
 def get_device():
     if torch.cuda.is_available():
         return torch.device("cuda")
-    if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-        return torch.device("mps")
+    # MPS has slow fallback for 5D padding in DirectionalConv3d — use CPU instead
+    # TODO: enable MPS when PyTorch adds native 5D padding support
     return torch.device("cpu")
 
 
@@ -41,7 +41,9 @@ def build_optimizers(model, muon_lr=0.02, adam_lr=1e-3, weight_decay=0.01):
     for name, param in model.named_parameters():
         if not param.requires_grad:
             continue
-        if param.ndim >= 2:
+        # Muon ONLY supports exactly 2D params (nn.Linear weights)
+        # Conv3d weights are 5D, bias/LayerNorm are 1D — both go to AdamW
+        if param.ndim == 2:
             muon_params.append(param)
         else:
             adam_params.append(param)
