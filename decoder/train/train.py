@@ -144,31 +144,38 @@ def train(args):
     scaler = torch.amp.GradScaler(device.type) if use_amp else None
     autocast_dtype = torch.bfloat16 if use_amp else None
 
+    # Pre-compile Stim samplers for all curriculum noise rates
+    # This avoids expensive circuit compilation in the training loop
+    print("Pre-compiling Stim samplers for curriculum...", end=" ", flush=True)
+    curriculum_rates = sorted(set(
+        round(curriculum.get_rate(s), 4) for s in range(0, args.steps, max(args.steps // 50, 1))
+    ))
+    # Ensure target rate is included
+    curriculum_rates = sorted(set(curriculum_rates) | {round(args.noise_rate, 4)})
+    dataset_cache = {}
+    for p in curriculum_rates:
+        dataset_cache[p] = SyndromeDataset(DataConfig(
+            distance=args.distance,
+            rounds=args.distance,
+            physical_error_rate=max(p, 1e-6),
+            batch_size=args.batch_size,
+        ))
+    print(f"{len(dataset_cache)} samplers ready.", flush=True)
+
+    def get_dataset(noise_rate):
+        """Find the closest pre-compiled sampler."""
+        key = min(dataset_cache.keys(), key=lambda k: abs(k - noise_rate))
+        return dataset_cache[key]
+
     # Training loop
     model.train()
     best_ler = 1.0
     start_time = time.time()
-    dataset_cache = {}
 
     for step in range(args.steps):
         # Current noise rate from curriculum
         current_p = curriculum.get_rate(step)
-
-        # Quantize noise rate to avoid recreating Stim circuits too often
-        p_key = round(current_p, 5)
-        if p_key not in dataset_cache:
-            dataset_cache[p_key] = SyndromeDataset(DataConfig(
-                distance=args.distance,
-                rounds=args.distance,
-                physical_error_rate=max(current_p, 1e-6),
-                batch_size=args.batch_size,
-            ))
-            # Keep cache bounded
-            if len(dataset_cache) > 20:
-                oldest = next(iter(dataset_cache))
-                del dataset_cache[oldest]
-
-        dataset = dataset_cache[p_key]
+        dataset = get_dataset(current_p)
         syndromes, labels = dataset.sample()
         syndromes = syndromes.to(device)
         labels = labels.to(device)
