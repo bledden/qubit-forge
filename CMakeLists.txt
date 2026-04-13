@@ -45,6 +45,12 @@ set_source_files_properties(python/pyquantum.cpp PROPERTIES LANGUAGE HIP)
 pybind11_add_module(pyquantum python/pyquantum.cpp)
 target_link_libraries(pyquantum PRIVATE quantum)
 
+# ===== Decoder =====
+add_library(decoder SHARED
+    decoder/src/types.cpp
+)
+target_include_directories(decoder PUBLIC decoder/include)
+
 # Tests
 set_source_files_properties(tests/test_statevec.cpp PROPERTIES LANGUAGE HIP)
 add_executable(test_statevec tests/test_statevec.cpp)
