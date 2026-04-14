@@ -1,18 +1,18 @@
 # qubit-forge
 
-GPU-accelerated quantum state vector simulator built from scratch in HIP/ROCm, targeting AMD MI300X.
+GPU-accelerated quantum computing toolkit — state vector simulator + neural QEC decoder.
 
-**33-qubit simulation on a single GPU** — 128 GB state vector, 8.6 billion complex amplitudes, 4.14 TB/s achieved bandwidth.
+**State vector simulator:** 33-qubit simulation on single MI300X (128 GB, 4.14 TB/s).
+
+**Neural decoder:** CNN that beats PyMatching (MWPM) on surface codes at d=3 and d=5 — trained in 87 minutes on GPU.
 
 ## What This Is
 
-A from-scratch quantum circuit simulator that stores the full quantum state vector in GPU HBM and applies gate operations as matrix transformations. Built to learn quantum gate math by implementing it, benchmark MI300X for quantum simulation workloads, and serve as the test harness for future QEC decoder work.
+Two tools bridging GPU kernel engineering and quantum computing infrastructure:
 
-This is **Project 1 of 4** in a series bridging GPU kernel engineering and quantum computing infrastructure:
-1. **State Vector Simulator** (this project) — learn the gate math, benchmark MI300X
-2. Tensor Network Contraction Engine — contraction-as-GEMM, fused transpose-contract kernels
-3. Real-Time QEC Decoder — GPU-accelerated error correction (the high-impact deliverable)
-4. Hybrid Variational Runtime — VQE/QAOA classical optimizer loops
+1. **State Vector Simulator** — from-scratch HIP kernels for quantum circuit simulation on MI300X. 33 qubits, 4.14 TB/s bandwidth (78% of peak), noise simulation for QEC research.
+
+2. **QEC Decoder Suite** — three-tier decoder (Union-Find C++ baseline, BP prototype, Neural CNN following Gu et al. 2026). The neural decoder beats the gold-standard MWPM decoder at d=3 and matches it at d=5.
 
 ## Optimization Journey
 
@@ -261,3 +261,87 @@ Kernel optimization techniques applied from the AMD GPU MODE E2E Model Speedrun 
 - **Per-shape profiling**: Different qubit counts need different kernel strategies (low/mid/high). Don't assume one config works for all.
 
 See the full hackathon retrospectives in the companion repo for detailed analysis of what worked and what didn't across 1,100+ kernel submissions.
+
+## QEC Decoder
+
+Three-tier quantum error correction decoder: Union-Find (CPU baseline), Belief Propagation (Python prototype), and Neural CNN (GPU-trained, Gu et al. arXiv:2604.08358).
+
+### Architecture
+
+```
+Stim (syndrome generation, ~1B Clifford gates/sec)
+    ↓
+Detection events + observable flips
+    ↓
+┌──────────────┐   ┌──────────────┐   ┌──────────────────┐
+│ Union-Find   │   │ BP (Python)  │   │ Neural CNN       │
+│ (C++, 20μs)  │   │ (prototype)  │   │ (PyTorch)        │
+│              │   │              │   │                  │
+│ Weighted     │   │ Min-sum      │   │ DirectionalConv3d│
+│ growth/merge │   │ message      │   │ H=256, L=d       │
+│ + peel       │   │ passing      │   │ Muon/AdamW       │
+└──────────────┘   └──────────────┘   └──────────────────┘
+```
+
+### Neural Decoder — Beats PyMatching (MWPM)
+
+CNN decoder following Gu et al. 2026 with direction-specific 3D convolutions (separate weight matrices per neighbor direction in the syndrome lattice).
+
+**d=3 results (trained on CPU, 65 min):**
+
+| p | Neural | PyMatching | Neural vs PM |
+|---|--------|-----------|-------------|
+| 0.001 | **0.038%** | 0.090% | **2.4x better** |
+| 0.002 | **0.132%** | 0.276% | **2.1x better** |
+| 0.005 | **0.996%** | 1.236% | **1.2x better** |
+| 0.007 | **1.770%** | 2.224% | **1.3x better** |
+| 0.010 | **3.648%** | 4.142% | **1.1x better** |
+
+Beats MWPM at every noise rate tested.
+
+**d=5 results (trained on MI300X GPU, 87 min):**
+
+| p | Neural | PyMatching | Neural vs PM |
+|---|--------|-----------|-------------|
+| 0.002 | **0.036%** | 0.084% | **2.3x better** |
+| 0.005 | **0.802%** | 0.844% | **1.05x better** |
+| 0.007 | 2.19% | **2.05%** | 1.07x worse |
+| 0.010 | 5.95% | **4.96%** | 1.2x worse |
+
+Beats MWPM at low-to-mid noise rates. Competitive at p=0.007.
+
+### Union-Find Decoder (C++)
+
+Weighted Union-Find with growth/merge/peel phases. Includes experimental decoder steering (adaptive edge weights from Sivak et al. arXiv:2511.08493).
+
+| d | p=0.005 | p=0.01 | Latency |
+|---|---------|--------|---------|
+| 3 | 4.9% | 10.7% | ~2 μs |
+| 5 | 5.6% | 11.4% | ~20 μs |
+| 7 | 5.3% | 12.9% | ~65 μs |
+
+### Key References
+
+- Gu et al. "Scalable Neural Decoders for Practical Fault-Tolerant Quantum Computation" (arXiv:2604.08358, April 2026) — CNN decoder architecture
+- Sivak et al. "Reinforcement Learning Control of Quantum Error Correction" (arXiv:2511.08493) — Decoder steering concept
+- Delfosse & Nickerson (2021) — Union-Find decoder algorithm
+
+### Decoder Build & Usage
+
+```bash
+# Build decoder (no GPU required)
+mkdir build && cd build
+cmake .. -Dpybind11_DIR=$(python3 -m pybind11 --cmakedir)
+make -j
+
+# Run tests
+python -m pytest decoder/tests/ -v
+
+# Train neural decoder
+python decoder/train/train.py --distance 5 --hidden_dim 256 --steps 80000
+
+# Evaluate
+python decoder/train/evaluate.py --checkpoint decoder/train/checkpoints/d5_gpu/best_model.pt
+```
+
+Dependencies: `pip install stim pymatching torch pybind11 numpy pytest`
