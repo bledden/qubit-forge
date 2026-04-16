@@ -1,18 +1,14 @@
 # qubit-forge
 
-GPU-accelerated quantum computing toolkit — state vector simulator + neural QEC decoder.
+GPU-accelerated quantum state vector simulator built from scratch in HIP/ROCm, targeting AMD MI300X.
 
-**State vector simulator:** 33-qubit simulation on single MI300X (128 GB, 4.14 TB/s).
+**33-qubit simulation on a single GPU** — 128 GB state vector, 4.14 TB/s achieved bandwidth (78% of theoretical peak).
 
-**Neural decoder:** CNN that beats PyMatching (MWPM) on surface codes at d=3 and d=5 — trained in 87 minutes on GPU.
+**Looking for the QEC decoder?** See **[Pathfinder](https://github.com/bledden/pathfinder)** — the neural decoder that beats PyMatching at every noise rate across d=3, 5, 7. Pathfinder has been split into its own repository.
 
 ## What This Is
 
-Two tools bridging GPU kernel engineering and quantum computing infrastructure:
-
-1. **State Vector Simulator** — from-scratch HIP kernels for quantum circuit simulation on MI300X. 33 qubits, 4.14 TB/s bandwidth (78% of peak), noise simulation for QEC research.
-
-2. **QEC Decoder Suite** — three-tier decoder (Union-Find C++ baseline, BP prototype, Neural CNN following Gu et al. 2026). The neural decoder beats the gold-standard MWPM decoder at d=3 and matches it at d=5.
+A from-scratch quantum circuit simulator that stores the full quantum state vector in GPU HBM and applies gate operations as matrix transformations. Built to learn quantum gate math by implementing it, benchmark MI300X for quantum simulation workloads, and serve as the test harness for QEC decoder research.
 
 ## Optimization Journey
 
