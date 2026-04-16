@@ -7,7 +7,7 @@ Second Nature Computing Inc., San Francisco, CA
 
 ## Abstract
 
-We introduce Pathfinder, a convolutional neural network decoder for quantum error correction that outperforms minimum-weight perfect matching (MWPM) on rotated surface codes across all tested noise rates and code distances. Pathfinder uses direction-specific 3D convolution — separate learned weight matrices for each neighbor direction in the syndrome lattice — combined with bottleneck residual blocks and the Muon optimizer. On the standard benchmark of circuit-level depolarizing noise, Pathfinder achieves logical error rates 5–44% lower than PyMatching (Sparse Blossom) at code distances d=3, 5, and 7 across physical error rates p=0.0005 to p=0.015, with 100,000-shot evaluations and 95% Wilson confidence intervals. At d=7, Pathfinder's error suppression scales faster than MWPM with increasing distance, exhibiting a 4.4× suppression ratio from d=5 to d=7 at p=0.003 compared to MWPM's 2.6×. The decoder runs at 19 μs per syndrome on an AMD MI300X GPU — 2× faster than the 40 μs reported by Gu et al. on H200 and 3.3× faster than AlphaQubit's 63 μs. FP16 quantization introduces zero accuracy degradation. The decoder generalizes to phenomenological noise and alternative code types (color codes, unrotated surface codes) without retraining. To our knowledge, Pathfinder is the first open-source decoder to outperform MWPM on surface codes. All code, trained checkpoints, and evaluation data are publicly available.
+I introduce Pathfinder, a convolutional neural network decoder for quantum error correction that outperforms minimum-weight perfect matching (MWPM) on rotated surface codes across all tested noise rates and code distances. Pathfinder uses direction-specific 3D convolution — separate learned weight matrices for each neighbor direction in the syndrome lattice — combined with bottleneck residual blocks and the Muon optimizer. On the standard benchmark of circuit-level depolarizing noise, Pathfinder achieves logical error rates 5–44% lower than PyMatching (Sparse Blossom) at code distances d=3, 5, and 7 across physical error rates p=0.0005 to p=0.015, with 100,000-shot evaluations and 95% Wilson confidence intervals. At d=7, Pathfinder's error suppression scales faster than MWPM with increasing distance, exhibiting a 4.4× suppression ratio from d=5 to d=7 at p=0.003 compared to MWPM's 2.6×. The decoder runs at 19 μs per syndrome on an AMD MI300X GPU — 2× faster than the 40 μs reported by Gu et al. on H200 and 3.3× faster than AlphaQubit's 63 μs. FP16 quantization introduces zero accuracy degradation. The decoder generalizes to phenomenological noise and alternative code types (color codes, unrotated surface codes) without retraining. To my knowledge, Pathfinder is the first open-source decoder to outperform MWPM on surface codes. All code, trained checkpoints, and evaluation data are publicly available.
 
 ---
 
@@ -19,7 +19,7 @@ Minimum-weight perfect matching (MWPM) has been the dominant decoding algorithm 
 
 Recent work by Gu et al. [8] demonstrated that convolutional neural network decoders exploiting the geometric structure of QEC codes can achieve substantially lower logical error rates than existing decoders, identifying a "waterfall" regime of error suppression. However, their code and trained models are not publicly available. Google's AlphaQubit [5] achieved ~6% lower logical error rates than MWPM on experimental Sycamore data using a recurrent transformer architecture, but this system is internal to Google and was validated on proprietary hardware noise.
 
-In this work, we present Pathfinder, a CNN decoder that:
+In this work, I present Pathfinder, a CNN decoder that:
 
 1. **Outperforms MWPM** at every tested noise rate (p=0.0005 to p=0.015) and code distance (d=3, 5, 7) under circuit-level depolarizing noise — 24 out of 24 evaluation points.
 2. **Achieves faster error suppression scaling** than MWPM with increasing code distance, consistent with the waterfall regime identified by Gu et al.
@@ -44,7 +44,7 @@ A decoder receives the 3D syndrome and must determine which logical observable w
 
 MWPM constructs a weighted graph from the syndrome, where defects are nodes and edges represent possible error chains connecting them. The decoder finds the minimum-weight perfect matching on this graph, corresponding to the most likely set of independent errors. PyMatching v2 [2] implements this via the Sparse Blossom algorithm, achieving near-linear average-case complexity by exploiting syndrome sparsity.
 
-MWPM is optimal for independent (uncorrelated) errors but cannot capture correlations between error mechanisms. The correlated matching mode of PyMatching performs a two-pass correction but, as we show, provides identical results to uncorrelated matching under circuit-level depolarizing noise on rotated surface codes.
+MWPM is optimal for independent (uncorrelated) errors but cannot capture correlations between error mechanisms. The correlated matching mode of PyMatching performs a two-pass correction but, as I show, provides identical results to uncorrelated matching under circuit-level depolarizing noise on rotated surface codes.
 
 ### 2.4 Neural Decoders
 
@@ -106,7 +106,7 @@ Training data is generated on-the-fly using Stim [10], which simulates stabilize
 
 ### 4.2 Optimizer
 
-We use the Muon optimizer [11] for all 2D weight parameters (linear layers within DirectionalConv3d) and AdamW for 1D parameters (biases, LayerNorm). Muon applies Newton-Schulz orthogonalization to weight updates, keeping the direction-specific weight matrices well-conditioned throughout training. This prevents the weight degeneration that standard optimizers allow, which is particularly important for the message-passing interpretation of our architecture.
+I use the Muon optimizer [11] for all 2D weight parameters (linear layers within DirectionalConv3d) and AdamW for 1D parameters (biases, LayerNorm). Muon applies Newton-Schulz orthogonalization to weight updates, keeping the direction-specific weight matrices well-conditioned throughout training. This prevents the weight degeneration that standard optimizers allow, which is particularly important for the message-passing interpretation of the architecture.
 
 **Ablation**: Replacing Muon with AdamW increases the logical error rate by 72% at d=5 (from 1.28% to 2.20%), making it the single most impactful architectural choice. By comparison, replacing DirectionalConv3d with standard Conv3d increases LER by only 4%, and removing the curriculum has negligible effect.
 
@@ -125,7 +125,7 @@ Ablation shows this curriculum provides smoother convergence but does not improv
 
 ### 4.5 Noise-Rate Specialization
 
-For d=7, where the noise range spans two orders of magnitude (p=0.001 to p=0.015), we train separate models at different target noise rates (p=0.007, p=0.01, mixed-noise, p=0.015) and select the best-performing model or their ensemble at each evaluation point. At d=3 and d=5, a single model trained at p=0.007 suffices to beat MWPM across all noise rates.
+For d=7, where the noise range spans two orders of magnitude (p=0.001 to p=0.015), I train separate models at different target noise rates (p=0.007, p=0.01, mixed-noise, p=0.015) and select the best-performing model or their ensemble at each evaluation point. At d=3 and d=5, a single model trained at p=0.007 suffices to beat MWPM across all noise rates.
 
 ### 4.6 Training Cost
 
@@ -229,7 +229,7 @@ The color code result is particularly striking: Pathfinder achieves 3.3× lower 
 
 ### 5.8 Sample Complexity
 
-Pathfinder converges in approximately 77 million training samples (80K steps × batch 1024) for d=5–7. Gu et al. [8] report using 266 million samples (80K steps × batch 3,328), suggesting that our compressed curriculum and Muon optimizer achieve 3.5× better sample efficiency.
+Pathfinder converges in approximately 77 million training samples (80K steps × batch 1024) for d=5–7. Gu et al. [8] report using 266 million samples (80K steps × batch 3,328), suggesting that the compressed curriculum and Muon optimizer achieve 3.5× better sample efficiency.
 
 ---
 
@@ -243,15 +243,15 @@ The failure analysis (Section 5.6) reveals that Pathfinder and MWPM fail on almo
 
 ### 6.2 The Role of Muon
 
-The ablation study identifies Muon as the single most impactful design choice (+72% LER without it), exceeding the contribution of the direction-specific architecture itself (+4%). We hypothesize that Muon's Newton-Schulz orthogonalization is critical for maintaining the diversity of the 7 directional weight matrices — without it, gradient descent tends to collapse the matrices toward similar solutions, losing the directional specificity that distinguishes our architecture from standard convolution.
+The ablation study identifies Muon as the single most impactful design choice (+72% LER without it), exceeding the contribution of the direction-specific architecture itself (+4%). I hypothesize that Muon's Newton-Schulz orthogonalization is critical for maintaining the diversity of the 7 directional weight matrices — without it, gradient descent tends to collapse the matrices toward similar solutions, losing the directional specificity that distinguishes this architecture from standard convolution.
 
 ### 6.3 Limitations
 
-**Code distances**: We evaluate at d=3, 5, 7. Gu et al. evaluate up to d=13. Extending to higher distances would require larger models (H=512) and longer training, but the error suppression scaling trends (Section 5.2) suggest Pathfinder's advantage would grow.
+**Code distances**: I evaluate at d=3, 5, 7. Gu et al. evaluate up to d=13. Extending to higher distances would require larger models (H=512) and longer training, but the error suppression scaling trends (Section 5.2) suggest Pathfinder's advantage would grow.
 
-**Noise models**: We evaluate on circuit-level depolarizing noise and phenomenological noise. Real quantum hardware exhibits device-specific correlated noise that may differ from these models. AlphaQubit [5] was validated on experimental Sycamore data; a direct comparison on real hardware noise is an important direction for future work.
+**Noise models**: I evaluate on circuit-level depolarizing noise and phenomenological noise. Real quantum hardware exhibits device-specific correlated noise that may differ from these models. AlphaQubit [5] was validated on experimental Sycamore data; a direct comparison on real hardware noise is an important direction for future work.
 
-**Inference latency**: Our 19 μs latency, while competitive with published neural decoders, exceeds MWPM's ~5 μs. For real-time decoding of superconducting qubits (1 μs cycle time), further optimization via custom GPU kernels, FP8 quantization, or FPGA deployment would be necessary.
+**Inference latency**: The 19 μs latency, while competitive with published neural decoders, exceeds MWPM's ~5 μs. For real-time decoding of superconducting qubits (1 μs cycle time), further optimization via custom GPU kernels, FP8 quantization, or FPGA deployment would be necessary.
 
 **Ensemble overhead**: At d=7, achieving the best accuracy across all noise rates requires selecting from 4 models trained at different noise targets. A single mixed-noise model performs well but does not uniformly beat MWPM at the highest noise rate. Developing a single model that dominates across the full noise range remains an open challenge.
 
@@ -261,15 +261,15 @@ The ablation study identifies Muon as the single most impactful design choice (+
 
 **AlphaQubit** [5]: Recurrent transformer decoder achieving ~6% lower LER than MWPM on experimental Sycamore data. Not open-source. Validated on real hardware noise rather than simulated noise.
 
-**Gu et al.** [8]: CNN decoder with direction-specific convolution achieving 17× lower LER than BP+OSD on [144,12,12] Gross codes. Identifies the "waterfall" regime. Not open-source. Our architecture follows their design principles with independent implementation.
+**Gu et al.** [8]: CNN decoder with direction-specific convolution achieving 17× lower LER than BP+OSD on [144,12,12] Gross codes. Identifies the "waterfall" regime. Not open-source. Pathfinder's architecture follows their design principles with independent implementation.
 
 **Astrea** [12]: FPGA implementation of MWPM achieving 1 ns decoding latency. Same accuracy as software MWPM — a hardware acceleration rather than algorithmic improvement.
 
-**Sparse Blossom / PyMatching** [2]: State-of-the-art MWPM implementation. 100-1000× faster than PyMatching v1 while maintaining identical accuracy. Our comparison baseline.
+**Sparse Blossom / PyMatching** [2]: State-of-the-art MWPM implementation. 100-1000× faster than PyMatching v1 while maintaining identical accuracy. The comparison baseline.
 
-**Union-Find** [3]: Near-linear time decoder. Fast but significantly less accurate than MWPM (7-30× higher LER in our evaluation).
+**Union-Find** [3]: Near-linear time decoder. Fast but significantly less accurate than MWPM (7-30× higher LER in this evaluation).
 
-**Sivak et al.** [13]: RL-based decoder steering for adapting to non-stationary noise on Google's Willow processor. Complementary to our approach — the steering concept could be applied to Pathfinder's ensemble weights.
+**Sivak et al.** [13]: RL-based decoder steering for adapting to non-stationary noise on Google's Willow processor. Complementary to Pathfinder's approach — the steering concept could be applied to Pathfinder's ensemble weights.
 
 ---
 
@@ -277,7 +277,7 @@ The ablation study identifies Muon as the single most impactful design choice (+
 
 Pathfinder demonstrates that a relatively simple CNN architecture — direction-specific convolution with bottleneck residual blocks and the Muon optimizer — can consistently outperform the gold-standard MWPM decoder on surface codes. The decoder achieves 5–44% lower logical error rates across all tested conditions, with faster error suppression scaling, 19 μs inference latency, and exceptional calibration (ECE=0.002).
 
-The total development cost of ~$65 in GPU compute and 5 days of engineering time suggests that high-accuracy neural decoders are within reach of individual researchers, not only large institutional teams. By releasing all code, trained models, and evaluation data, we aim to accelerate progress toward practical real-time neural decoding for fault-tolerant quantum computation.
+The total development cost of ~$65 in GPU compute and 5 days of engineering time suggests that high-accuracy neural decoders are within reach of individual researchers, not only large institutional teams. By releasing all code, trained models, and evaluation data, I aim to accelerate progress toward practical real-time neural decoding for fault-tolerant quantum computation.
 
 ---
 
